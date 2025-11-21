@@ -1,13 +1,13 @@
 //+------------------------------------------------------------------+
-//|                                           CRT_Mother_Gold_v5.mq5 |
+//|                                         CRT_Mother_Gold_v5_1.mq5 |
 //|                               Copyright 2024, CRT Trading Expert |
 //|                                      https://www.crt-trading.com |
-//|            Modified by Gemini: Added Session Boxes & Minute Time |
+//|              Modified by Gemini: Added 50% Body Penetration Rule |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2024, CRT Trading Expert"
 #property link      "https://www.crt-trading.com"
-#property version   "1.00" 
-#property description "CRT - Vela Madre + Filtros + Sesiones (Cajas y Minutos)"
+#property version   "1.01" 
+#property description "CRT - Vela Madre + Filtros + Sesiones + Filtro % Cuerpo"
 
 #property indicator_chart_window
 #property indicator_buffers 5 
@@ -23,60 +23,61 @@
 //--- PLOT 2: COMPRA
 #property indicator_label2  "BULLISH CRT"
 #property indicator_type2   DRAW_ARROW
-#property indicator_color2  clrDarkGreen;
+#property indicator_color2  clrDarkGreen
 #property indicator_style2  STYLE_SOLID
 #property indicator_width2  2
 
 //==================================================================
-//                        INPUTS DEL USUARIO
+//                       INPUTS DEL USUARIO
 //==================================================================
 
 input group "1. CONFIGURACIÓN VISUAL CRT"
-input color    InpBearColor   = clrRed;      // Color Venta
-input color    InpBullColor   = clrLime;     // Color Compra
-input int      InpArrowBear   = 218;         // Código Flecha Venta
-input int      InpArrowBull   = 217;         // Código Flecha Compra
-input int      InpArrowSize   = 2;           // Tamaño Flecha
+input color     InpBearColor    = clrRed;      // Color Venta
+input color     InpBullColor    = clrLime;     // Color Compra
+input int       InpArrowBear    = 218;         // Código Flecha Venta
+input int       InpArrowBull    = 217;         // Código Flecha Compra
+input int       InpArrowSize    = 2;           // Tamaño Flecha
 
 input group "2. LÓGICA DEL PATRÓN CRT"
-input int      InpMinBody     = 0;           // Mínimo puntos cuerpo (0=off)
-input int      InpMinWick     = 0;           // Mínimo puntos mecha (0=off)
-input bool     InpFilterWick  = false;        // Filtrar mecha lado apertura
+input int       InpMinBody      = 0;           // Mínimo puntos cuerpo (0=off)
+input int       InpMinWick      = 0;           // Mínimo puntos mecha (0=off)
+input bool      InpFilterWick   = false;       // Filtrar mecha lado apertura
+input double    InpMaxPenetration = 50.0;      // % Max Penetración en Cuerpo Madre
 
 input group "3. FILTRO TENDENCIA (EMA)"
-input bool     UseEmaFilter   = false;       // Activar Filtro EMA
-input int      InpFastEma     = 9;           // EMA Rápida
-input int      InpSlowEma     = 21;          // EMA Lenta
+input bool      UseEmaFilter    = false;       // Activar Filtro EMA
+input int       InpFastEma      = 9;           // EMA Rápida
+input int       InpSlowEma      = 21;          // EMA Lenta
 
 input group "4. FILTRO MOMENTO (RSI)"
-input bool     UseRsiFilter   = false;       // Activar Filtro RSI
-input int      InpRsiPeriod   = 14;          // Periodo RSI
-input double   InpRsiOs       = 30.0;        // Nivel Sobreventa (Buy > 30)
-input double   InpRsiOb       = 70.0;        // Nivel Sobrecompra (Sell < 70)
+input bool      UseRsiFilter    = false;       // Activar Filtro RSI
+input int       InpRsiPeriod    = 14;          // Periodo RSI
+input double    InpRsiOs        = 30.0;        // Nivel Sobreventa (Buy > 30)
+input double    InpRsiOb        = 70.0;        // Nivel Sobrecompra (Sell < 70)
 
 input group "5. SESIONES (Formato HH:MM)"
-input bool     ShowSessions   = true;        // Mostrar Cajas y Líneas
-input bool     SessionsBg   = true;          // Fondo en sesiones
-input string   AsiaStartStr   = "02:00";     // Inicio Asia
-input string   AsiaEndStr     = "09:30";     // Fin Asia
-input string   LonStartStr    = "10:00";     // Inicio Londres
-input string   LonEndStr      = "14:30";     // Fin Londres
-input string   NyStartStr     = "16:30";     // Inicio New York
-input string   NyEndStr       = "21:00";     // Fin New York
+input bool      ShowSessions    = true;        // Mostrar Cajas y Líneas
+input bool      SessionsBg      = true;        // Fondo en sesiones
+input string    AsiaStartStr    = "02:00";     // Inicio Asia
+input string    AsiaEndStr      = "09:30";     // Fin Asia
+input string    LonStartStr     = "10:00";     // Inicio Londres
+input string    LonEndStr       = "14:30";     // Fin Londres
+input string    NyStartStr      = "16:30";     // Inicio New York
+input string    NyEndStr        = "21:00";     // Fin New York
 
 //--- BUFFERS
-double         BufBear[];
-double         BufBull[];
-double         BufFastMA[];
-double         BufSlowMA[];
-double         BufRSI[];
+double          BufBear[];
+double          BufBull[];
+double          BufFastMA[];
+double          BufSlowMA[];
+double          BufRSI[];
 
 //--- HANDLES
-int            hFastMA, hSlowMA, hRSI;
+int             hFastMA, hSlowMA, hRSI;
 
 //--- GLOBALES
-string         ShortName;
-int            minBars;
+string          ShortName;
+int             minBars;
 
 //--- VARIABLES INTERNAS PARA TIEMPO
 int AsiaStartMin, AsiaEndMin;
@@ -88,7 +89,7 @@ int NyStartMin, NyEndMin;
 //+------------------------------------------------------------------+
 int OnInit()
 {
-   ShortName = "CRT_Gold_v5";
+   ShortName = "CRT_Gold_v5.1";
    
    SetIndexBuffer(0, BufBear, INDICATOR_DATA);
    SetIndexBuffer(1, BufBull, INDICATOR_DATA);
@@ -189,7 +190,7 @@ int OnCalculate(const int rates_total,
 }
 
 //==================================================================
-//                     LÓGICA DE SESIONES (BOXES & LINES)
+//                      LÓGICA DE SESIONES (BOXES & LINES)
 //==================================================================
 void DrawSessions(const datetime &time[], const double &high[], const double &low[], int total)
 {
@@ -297,29 +298,80 @@ int TimeStringToMinutes(string timeStr)
 }
 
 //==================================================================
-//                     LÓGICA PATRONES
+//                      LÓGICA PATRONES
 //==================================================================
 bool CheckBearish(int i, const double &o[], const double &h[], const double &l[], const double &c[]) {
-   int m = i - 1;
+   int m = i - 1; // Índice Madre
+   
+   // 1. Madre debe ser Alcista
    if(c[m] <= o[m]) return false;
-   if(InpMinBody > 0 && MathAbs(c[m]-o[m]) < InpMinBody*_Point) return false;
+   
+   // 2. Filtro tamaño mínimo cuerpo madre
+   double motherBody = c[m] - o[m];
+   if(InpMinBody > 0 && motherBody < InpMinBody*_Point) return false;
+   
+   // 3. Filtro mecha inferior madre
    if(InpFilterWick && InpMinWick > 0 && (o[m]-l[m]) < InpMinWick*_Point) return false;
+   
+   // 4. Condiciones Inside Bar básicas
+   if(h[i] <= h[m]) return false; // Corrección lógica original: h[i] debe ser menor a h[m] para ser inside. 
+                                  // TU CODIGO ORIGINAL DECIA: if(h[i] <= h[m]) return false; 
+                                  // Esto significa que si h[i] es MENOR, se cancela? 
+                                  // Normalmente Inside bar es High[i] < High[m]. 
+                                  // ASUMO que tu lógica original busca un FALSO QUIEBRE (Fakeout) o similar
+                                  // dado que CheckBearish suele ser para venta. 
+                                  // MANTENGO TU LÓGICA ORIGINAL DE ESTRUCTURA, SOLO AGREGO EL FILTRO DE 50%.
+   
+   // NOTA EXPERTO: En tu código original tenías:
+   // if(h[i] <= h[m]) return false; -> Esto exige que la vela Gold ROMPA el alto de la madre.
+   // if(c[i] >= h[m]) return false; -> Pero que cierre DENTRO (debajo del alto).
+   // Esto es un patrón de "Toma de liquidez" o "Fakeout" por arriba.
+   
    if(h[i] <= h[m]) return false; 
    if(c[i] >= h[m]) return false; 
-   if(c[i] >= o[i]) return false; 
-   if(l[i] <= o[m]) return false; 
+   if(c[i] >= o[i]) return false; // Gold debe ser bajista (Open > Close)
+   if(l[i] <= o[m]) return false; // Gold Low no debe romper el Open de la madre (mantenerse arriba)
+   
+   // --- NUEVO FILTRO: CIERRE NO MAYOR AL 50% DEL CUERPO MADRE ---
+   // En Venta: Madre es Verde. Cuerpo va de Open a Close.
+   // Queremos que la vela Roja (Gold) baje, pero NO baje más del 50% del cuerpo de la Madre.
+   // El nivel del 50% es: CloseMadre - (CuerpoMadre * 0.50)
+   double limitPrice = c[m] - (motherBody * (InpMaxPenetration / 100.0));
+   
+   // Si el precio de cierre es MENOR al límite, significa que penetró más del 50% hacia abajo.
+   if(c[i] < limitPrice) return false; 
+   
    return true;
 }
 
 bool CheckBullish(int i, const double &o[], const double &h[], const double &l[], const double &c[]) {
    int m = i - 1;
+   
+   // 1. Madre debe ser Bajista
    if(c[m] >= o[m]) return false;
-   if(InpMinBody > 0 && MathAbs(o[m]-c[m]) < InpMinBody*_Point) return false;
+   
+   // 2. Filtro tamaño mínimo cuerpo madre
+   double motherBody = o[m] - c[m];
+   if(InpMinBody > 0 && motherBody < InpMinBody*_Point) return false;
+   
+   // 3. Filtro mecha superior madre
    if(InpFilterWick && InpMinWick > 0 && (h[m]-o[m]) < InpMinWick*_Point) return false;
-   if(l[i] >= l[m]) return false; 
-   if(c[i] <= l[m]) return false; 
-   if(c[i] <= o[i]) return false; 
-   if(h[i] >= o[m]) return false; 
+   
+   // 4. Condiciones Patrón (Fakeout por abajo)
+   if(l[i] >= l[m]) return false; // Exige que Low Gold rompa el Low Madre
+   if(c[i] <= l[m]) return false; // Pero que cierre DENTRO (encima del low)
+   if(c[i] <= o[i]) return false; // Gold debe ser alcista (Close > Open)
+   if(h[i] >= o[m]) return false; // High Gold no debe romper el Open Madre
+   
+   // --- NUEVO FILTRO: CIERRE NO MAYOR AL 50% DEL CUERPO MADRE ---
+   // En Compra: Madre es Roja. Cuerpo va de Close a Open.
+   // Queremos que la vela Verde (Gold) suba, pero NO suba más del 50% del cuerpo de la Madre.
+   // El nivel del 50% es: CloseMadre + (CuerpoMadre * 0.50)
+   double limitPrice = c[m] + (motherBody * (InpMaxPenetration / 100.0));
+   
+   // Si el precio de cierre es MAYOR al límite, significa que penetró más del 50% hacia arriba.
+   if(c[i] > limitPrice) return false; 
+   
    return true;
 }
 
